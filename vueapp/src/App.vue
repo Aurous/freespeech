@@ -2,7 +2,7 @@
   <v-app>
     <v-app-bar
       app
-      color="primary"
+      :color="taskbarColor"
       dark
     >
       <div class="d-flex align-center">
@@ -19,23 +19,29 @@
           home
         </v-icon>
       </v-btn>
+
       <v-btn
         icon
-        v-if="customTilePad && !editMode"
-        @click="this.toggleEditMode"
+        v-if="passcode"
+        @click="toggleLocked"
       >
-        <v-icon>edit</v-icon>
+        <v-icon>{{ locked ? 'lock_open' : 'lock' }}</v-icon>
       </v-btn>
+
       <v-btn
         icon
-        v-if="customTilePad && editMode"
+        v-if="customTilePad"
+        :disabled="isLocked"
         @click="this.toggleEditMode"
       >
-        <v-icon>save</v-icon>
+        <v-icon>{{ editMode ? 'save' : 'edit ' }}</v-icon>
       </v-btn>
+
       <v-btn
         icon
         to="/about"
+        @click="this.disableEditMode"
+        :disabled="isLocked"
       >
         <v-icon>
           info
@@ -44,7 +50,9 @@
 
       <v-btn
         icon
-        @click="toggleSettingsDialogVisibility"
+        to="/settings"
+        @click="this.disableEditMode"
+        :disabled="isLocked"
       >
         <v-icon>
           settings
@@ -54,57 +62,108 @@
 
     <v-content>
       <router-view />
-      <Settings />
       <editDialog />
     </v-content>
+
+    <v-snackbar
+      v-model="passcodeError"
+      color="error"
+      top
+    >
+      Incorrect passcode
+    </v-snackbar>
+
+    <v-dialog
+      v-model="passcodeEntry"
+      width="400"
+      persistent
+    >
+      <NumberPad
+        title="Enter Passcode to unlock"
+        :length="passcodeLength"
+        :hidden="true"
+        @input="handlePasscodeInput"
+      />
+    </v-dialog>
   </v-app>
 </template>
 
 <script>
-import Settings from '@/views/Settings';
 import EditDialog from '@/components/TilePad/EditTileDialog';
+import NumberPad from '@/components/NumberPad/NumberPad';
 import { mapActions, mapGetters } from 'vuex';
 
 export default {
-  name: 'App',
-  components: {
-    Settings,
-    EditDialog
-  },
-  data: () => ({
-    //
-  }),
-    methods: {
-    ...mapActions({        
-      toggleSettingsDialogVisibility: 'settings/toggleSettingsDialogVisibility',
-      toggleEditMode: 'tilePad/toggleEditMode',
-      setVoices: 'settings/setVoices',
-      setVoiceOptions: 'settings/setVoiceOptions',
-    }),
-    populateVoiceData (windowVoices){
-      const voiceOptions = windowVoices.map((voice, index) => {
-        return { text: `${voice.name} (${voice.lang})`, value: index };
-      }).sort((a, b) => a.text.localeCompare(b.text));
+	name: 'App',
+	components: {
+		EditDialog,
+		NumberPad
+	},
+	data: () => ({
+		passcodeEntry: false,
+		passcodeError: false,
+		passcodeLength: 4,
+	}),
+	methods: {
+		...mapActions({
+			setLocked: 'settings/setLocked',
+			setVoices: 'settings/setVoices',
+			setVoiceOptions: 'settings/setVoiceOptions',
+			toggleEditMode: 'tilePad/toggleEditMode'
+		}),
+		handlePasscodeInput (input) {
+			this.passcodeEntry = false;
 
-      this.setVoices(windowVoices);
-      this.setVoiceOptions(voiceOptions);
-    },
-  },
-  computed: {
-    ...mapGetters({ 
-      customTilePad: 'settings/customTilePad',
-      editMode: 'tilePad/editMode'
-    })
-  },
-  created(){
-    let windowVoices = window.speechSynthesis.getVoices();
+			if (input === this.passcode) {
+				this.setLocked(false);
+			} else if (input !== null) {
+				this.passcodeError = true;
+			}
+		},
+		populateVoiceData (windowVoices){
+			const voiceOptions = windowVoices.map((voice, index) => {
+				return { text: `${voice.name} (${voice.lang})`,
+					value: index };
+			}).sort((a, b) => a.text.localeCompare(b.text));
 
-    if (!windowVoices.length > 0) {
-      const vm = this;
-      window.speechSynthesis.onvoiceschanged = () => vm.populateVoiceData(window.speechSynthesis.getVoices());
-    } else {
-      this.populateVoiceData(windowVoices);
-    }
-  }
+			this.setVoices(windowVoices);
+			this.setVoiceOptions(voiceOptions);
+		},
+		disableEditMode() {
+			this.$store.dispatch('tilePad/setEditMode', false);
+		},
+		toggleLocked(){
+			if (this.locked) {
+				this.passcodeEntry = true;
+			} else {
+				this.disableEditMode();
+				this.setLocked(true);
+			}
+		}
+	},
+	computed: {
+		...mapGetters({
+			customTilePad: 'settings/customTilePad',
+			editMode: 'tilePad/editMode',
+			locked: 'settings/locked',
+			passcode: 'settings/passcode',
+		}),
+		isLocked() {
+			return this.passcode !== null && this.passcode.length > 0 && this.locked;
+		},
+		taskbarColor() {
+			return this.editMode ? 'success' : 'primary';
+		}
+	},
+	created(){
+		let windowVoices = window.speechSynthesis.getVoices();
+
+		if (!windowVoices.length > 0) {
+			const vm = this;
+			window.speechSynthesis.onvoiceschanged = () => vm.populateVoiceData(window.speechSynthesis.getVoices());
+		} else {
+			this.populateVoiceData(windowVoices);
+		}
+	}
 };
 </script>

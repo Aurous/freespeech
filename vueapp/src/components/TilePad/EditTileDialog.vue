@@ -29,11 +29,18 @@
                   aspect-ratio="1"
                   :src="currentTileBeingEdited.image"
                 />
-                <v-text-field 
+                <v-text-field
                   class="pt-5"
                   :value="currentTileBeingEdited.text"
                   @input="update('text', $event)"
                   label="Text to speak"
+                />
+                <p class="text-left">
+                  Accent color
+                </p>
+                <v-color-picker
+                  hide-inputs
+                  v-model="color"
                 />
               </v-form>
             </v-col>
@@ -45,7 +52,7 @@
         <v-btn
           color="blue darken-1"
           text
-          @click="saveCurrentEdit"          
+          @click="saveCurrentEdit"
         >
           Save
         </v-btn>
@@ -66,29 +73,37 @@
 import {mapActions, mapGetters} from 'vuex';
 
 export default {
-  name:'EditTileDialog',
-  computed: {
-    ...mapGetters({
-      editDialogVisibility: 'tilePad/editDialogVisibility',
-      currentTileBeingEdited: 'tilePad/currentTileBeingEdited'      
-    }),
-  },
-  methods: {
-    ...mapActions({
-      toggleEditDialogVisibility: 'tilePad/toggleEditDialogVisibility',
-      saveTileEdit: 'tilePad/saveTileEdit',
-      saveEditsToTileBeingEdited: 'tilePad/saveEditsToTileBeingEdited'
-    }),
-    saveCurrentEdit(){
-      this.saveTileEdit();
-      this.toggleEditDialogVisibility();
-    },
-    update(key, value){      
-      this.saveEditsToTileBeingEdited({'key': key, 'value': value});
-    }
-    
-  },
-    //this.editedTileValues = Object.assign({}, this.currentTileBeingEdited);
+	name:'EditTileDialog',
+	computed: {
+		...mapGetters({
+			editDialogVisibility: 'tilePad/editDialogVisibility',
+			currentTileBeingEdited: 'tilePad/currentTileBeingEdited'
+		}),
+	},
+	data () {
+		return {
+			color: '',
+		};
+	},
+	methods: {
+		...mapActions({
+			toggleEditDialogVisibility: 'tilePad/toggleEditDialogVisibility',
+			saveTileEdit: 'tilePad/saveTileEdit',
+			saveEditsToTileBeingEdited: 'tilePad/saveEditsToTileBeingEdited'
+		}),
+		saveCurrentEdit(){
+			this.saveEditsToTileBeingEdited({ key: 'accent',
+				value: this.color});
+			this.saveTileEdit();
+			this.toggleEditDialogVisibility();
+		},
+		update(key, value){
+			this.saveEditsToTileBeingEdited({'key': key,
+				'value': value});
+		}
+
+	},
+	//this.editedTileValues = Object.assign({}, this.currentTileBeingEdited);
 
 
 };
